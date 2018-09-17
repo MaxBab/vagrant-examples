@@ -1,2 +1,2 @@
-# vagrantfile_examples
+# vagrant-examples
 Vagrantfile advanced examples
