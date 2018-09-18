@@ -15,11 +15,13 @@ servers = [
 
 Vagrant.configure(2) do |config|
   # Use of the hostmanager plugin to update the host and guest /etc/hosts file.
-  config.hostmanager.enabled = true
-  config.hostmanager.manage_host = true
-  config.hostmanager.manage_guest = true
-  config.hostmanager.ignore_private_ip = false
-  config.hostmanager.include_offline = false
+  if Vagrant.has_plugin?("vagrant-hostmanager")
+    config.hostmanager.enabled = true
+    config.hostmanager.manage_host = true
+    config.hostmanager.manage_guest = true
+    config.hostmanager.ignore_private_ip = false
+    config.hostmanager.include_offline = false
+  end
 
   # Loop each server from the servers array above.
   servers.each do |server|
