@@ -1,0 +1,20 @@
+# Test dummy ansible playbook
+---
+
+- hosts: app
+  vars:
+    test_file: /tmp/test_file
+  tasks:
+    - name: Create dummy file
+      copy:
+        content: 'This is a test file'
+        dest: '{{ test_file }}'
+
+    - name: Read test file content
+      slurp:
+        src: '{{ test_file }}'
+      register: file_content
+
+    - name: Print test file content
+      debug:
+        msg: "{{ file_content.content | b64decode }}"
