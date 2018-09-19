@@ -1,0 +1,106 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Ansible playbook to provision
+ansible_playbook = "playbook.yml"
+# Ansible inventory. Full path to a file or a file.
+ansible_inventory_path = "inventory/hosts"
+# Configuration file shared between Vagrantfile and Ansible playbook
+config_file = "vagrant.yml"
+
+require 'yaml'
+# https://blog.scottlowe.org/2016/01/14/improved-way-yaml-vagrant/
+if !File.exists?(File.join(File.dirname(__FILE__), config_file))
+  puts "The vagrant.yml file config is missing"
+  abort
+end
+vars = YAML.load_file(File.join(File.dirname(__FILE__), config_file))
+
+servers = vars['servers']
+# Validate servers config in config_file
+if !servers || servers.empty?
+  puts "No servers defined in " + config_file
+  abort
+end
+
+Vagrant.configure(2) do |config|
+  # Use of the hostmanager plugin to update the host and guest /etc/hosts file.
+  if Vagrant.has_plugin?("vagrant-hostmanager")
+    config.hostmanager.enabled = true
+    config.hostmanager.manage_host = true
+    config.hostmanager.manage_guest = true
+    config.hostmanager.ignore_private_ip = false
+    config.hostmanager.include_offline = false
+  end
+
+  # Create inventory for ansible provision
+  # The inventory will hold servers details and groups per each server.
+  if File.dirname(ansible_inventory_path) != "."
+    Dir.mkdir(File.dirname(ansible_inventory_path)) unless Dir.exist?(File.dirname(ansible_inventory_path))
+  end
+  File.open(ansible_inventory_path, 'w') do |f|
+    servers.each do |cfg|
+      # Breaking a long line
+      f.write "#{cfg["hostname"]} ansible_host=#{cfg["ip"]} "
+      f.write "ansible_user=#{vars['ansible_user']} ansible_ssh_private_key_file=#{vars['ssh_key']}\n"
+    end
+    f.write "\n"
+    f.write "[all]\n"
+    servers.each do |cfg|
+      f.write "#{cfg["hostname"]}\n"
+    end
+    f.write "\n"
+    servers.each do |cfg|
+      f.write "[#{cfg["group"]}]\n"
+      f.write "#{cfg["hostname"]}\n"
+      f.write "\n"
+    end
+  end
+
+  # Loop each server from the servers array above.
+  servers.each_with_index do |server, index|
+    # Check if custom box is defined for specific server within the servers array.
+    # If not applies the default (box=ubuntu/xenial64).
+    box_image = server["box"] ? server["box"] : vars['box'];
+    config.vm.define server["hostname"] do |conf|
+      conf.vm.box = box_image.to_s
+      conf.vm.hostname = server["hostname"]
+      conf.vm.network "private_network", ip: server["ip"]
+
+      # Checks for the custom cpu and/or ram defined for a specific server.
+      # If not applies the default (cpu=1, ram=512).
+      cpu = server["cpu"] ? server["cpu"] : 1;
+      memory = server["ram"] ? server["ram"] : 512;
+      config.vm.provider "virtualbox" do |vb|
+        vb.customize ["modifyvm", :id, "--cpus", cpu.to_s]
+        vb.customize ["modifyvm", :id, "--memory", memory.to_s]
+      end
+
+      # Takes the ssh key provided above and copying the public key to the server.
+      config.ssh.private_key_path = ["~/.vagrant.d/insecure_private_key", vars['ssh_key']]
+      config.ssh.insert_key = false
+      config.vm.provision "file", source: vars['ssh_key'] + ".pub", destination: "~/.ssh/authorized_keys"
+
+      # The ubuntu/xenial64 box is missing python. Install it for ansible provision.
+      if vars['box'] == "ubuntu/xenial64"
+        config.vm.provision "shell" do |s|
+          s.inline = "test -e /usr/bin/python || (apt -qqy update && apt install -qqy python-minimal)"
+        end
+      end
+
+      # Provision nodes with Ansible.
+      # The index used here in order to execute the provision just after all
+      # the servers are up and running.
+      if index == servers.size - 1
+        if ansible_playbook != ""
+          config.vm.provision :ansible do |ansible|
+            ansible.inventory_path = ansible_inventory_path
+            ansible.verbose = "v"
+            ansible.limit = "all"
+            ansible.playbook = ansible_playbook
+          end
+        end
+      end
+    end
+  end
+end

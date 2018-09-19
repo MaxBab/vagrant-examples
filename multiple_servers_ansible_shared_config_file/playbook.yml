@@ -1,13 +1,12 @@
-# Test dummy ansible playbook
 ---
 
 - hosts: servers
-  vars:
-    test_file: /tmp/test_file
+  vars_files:
+    - vagrant.yml
   tasks:
     - name: Create dummy file
       copy:
-        content: 'This is a test file'
+        content: '{{ new_file_content }}'
         dest: '{{ test_file }}'
 
     - name: Read test file content

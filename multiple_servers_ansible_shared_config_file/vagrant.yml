@@ -1,0 +1,25 @@
+---
+
+# Define servers and ip addresses.
+# Defining custom 'ram/cpu' will override the default values below.
+servers:
+  - hostname: server1
+    ip: 10.10.10.10
+    ram: 1024
+    cpu: 2
+    group: servers
+  - hostname: client1
+    ip: 10.10.10.11
+    group: clients
+  - hostname: client2
+    ip: 10.10.10.12
+    group: clients
+
+# Variables - SSH key and a box that should be used with the servers
+box: "ubuntu/xenial64"
+ssh_key: "~/.ssh/id_rsa"
+
+# Ansible playbook variables
+ansible_user: vagrant
+new_file_content: "This is the new content of the file"
+test_file: "/tmp/test_file"

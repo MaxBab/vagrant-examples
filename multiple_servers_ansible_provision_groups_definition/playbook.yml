@@ -1,7 +1,7 @@
 # Test dummy ansible playbook
 ---
 
-- hosts: app
+- hosts: servers
   vars:
     test_file: /tmp/test_file
   tasks:
