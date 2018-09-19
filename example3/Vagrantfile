@@ -80,7 +80,7 @@ Vagrant.configure(2) do |config|
       # The ubuntu/xenial64 box is missing python. Install it for ansible provision.
       if box == "ubuntu/xenial64"
         config.vm.provision "shell" do |s|
-          s.inline = "test -e /usr/bin/python || (apt -qqy update && apt install -qqy python-minimal)"
+          s.inline = "test -e /usr/bin/python || (apt-get -qqy update && apt-get install -qqy python-minimal)"
         end
       end
 
