@@ -13,8 +13,11 @@ servers = [
   { :hostname => "client2", :ip => "10.10.10.12", :group => "clients" }
 ]
 
-# Defined ansible playbook
+# Ansible playbook to provision
 ansible_playbook = "playbook.yml"
+# Ansible inventory. Full path to a file or a file.
+ansible_inventory_path = "inventory/hosts"
+ansible_user = "vagrant"
 
 Vagrant.configure(2) do |config|
   # Use of the hostmanager plugin to update the host and guest /etc/hosts file.
@@ -26,15 +29,28 @@ Vagrant.configure(2) do |config|
     config.hostmanager.include_offline = false
   end
 
-  # Create groups to be used in ansible inventory
-  groups = {"all" => []}
-  servers.each do |cfg|
-    if ! groups.has_key?(cfg[:group])
-      groups[cfg[:group]] = [cfg[:hostname]]
-    else
-      groups[cfg[:group]].push(cfg[:hostname])
+  # Create inventory for ansible provision
+  # The inventory will hold servers details and groups per each server.
+  if File.dirname(ansible_inventory_path) != "."
+    Dir.mkdir(File.dirname(ansible_inventory_path)) unless Dir.exist?(File.dirname(ansible_inventory_path))
+  end
+  File.open(ansible_inventory_path, 'w') do |f|
+    servers.each do |cfg|
+      # Breaking a long line
+      f.write "#{cfg[:hostname]} ansible_host=#{cfg[:ip]} "
+      f.write "ansible_user=#{ansible_user} ansible_ssh_private_key_file=#{ssh_key}\n"
     end
-    groups["all"].push(cfg[:hostname])
+    f.write "\n"
+    f.write "[all]\n"
+    servers.each do |cfg|
+      f.write "#{cfg[:hostname]}\n"
+    end
+    f.write "\n"
+    servers.each do |cfg|
+      f.write "[#{cfg[:group]}]\n"
+      f.write "#{cfg[:hostname]}\n"
+      f.write "\n"
+    end
   end
 
   # Loop each server from the servers array above.
@@ -74,9 +90,9 @@ Vagrant.configure(2) do |config|
       if index == servers.size - 1
         if ansible_playbook != ""
           config.vm.provision :ansible do |ansible|
+            ansible.inventory_path = ansible_inventory_path
             ansible.verbose = "v"
             ansible.limit = "all"
-            ansible.groups = groups
             ansible.playbook = ansible_playbook
           end
         end
