@@ -3,7 +3,7 @@
 
 # Ansible playbook to provision
 ansible_playbook = "playbook.yml"
-# Ansible inventory. Full path to a file or a file.
+# Ansible inventory. The path supports nested directories or a single file
 ansible_inventory_path = "inventory/hosts"
 # Configuration file shared between Vagrantfile and Ansible playbook
 config_file = "vagrant.yml"

@@ -1,19 +1,26 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Variables - SSH key and a box that should be used with the servers
+# Global variables - ssh key and a box that should be used for the servers
 ssh_key                     = "~/.ssh/id_rsa"
-box                         = "ubuntu/xenial64"
+box                         = "centos/7"
 
-# Define servers and ip addresses.
-# Defining custom 'ram/cpu' will override the default values below.
+# Define servers details.
+# Mandatory variables:
+# - hostname
+# - ip
+# Optional variables, could be set to override the defaults for specific box:
+# - ram (default: 512)
+# - cpu (default: 1)
+# - box (default: defined above)
 servers = [
   { :hostname => "server1", :ip => "10.10.10.10", :ram => 1024, :cpu => 2, :group => "servers" },
-  { :hostname => "client1", :ip => "10.10.10.11", :group => "clients" },
+  { :hostname => "client1", :ip => "10.10.10.11", :box => "ubuntu/xenial64", :group => "clients" },
   { :hostname => "client2", :ip => "10.10.10.12", :group => "clients" }
 ]
 
 # Defined ansible playbook
+# If empty, will skip the ansible provisioner block
 ansible_playbook = "playbook.yml"
 
 Vagrant.configure(2) do |config|

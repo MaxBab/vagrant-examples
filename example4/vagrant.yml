@@ -1,7 +1,13 @@
 ---
 
-# Define servers and ip addresses.
-# Defining custom 'ram/cpu' will override the default values below.
+# Define servers details.
+# Mandatory variables:
+# - hostname
+# - ip
+# Optional variables, could be set to override the defaults for specific box:
+# - ram (default: 512)
+# - cpu (default: 1)
+# - box (default: defined above)
 servers:
   - hostname: server1
     ip: 10.10.10.10
@@ -10,13 +16,14 @@ servers:
     group: servers
   - hostname: client1
     ip: 10.10.10.11
+    box: "ubuntu/xenial64"
     group: clients
   - hostname: client2
     ip: 10.10.10.12
     group: clients
 
-# Variables - SSH key and a box that should be used with the servers
-box: "ubuntu/xenial64"
+# Global variables - ssh key and a box that should be used for the servers
+box: "centos/7"
 ssh_key: "~/.ssh/id_rsa"
 
 # Ansible playbook variables
