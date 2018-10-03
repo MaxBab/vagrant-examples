@@ -21,3 +21,6 @@ Vagrant file advanced examples
   * Custom Ansible inventory creation (including custom groups)
   * Config yml based file shared between Vagrantfile and Ansible playbook
     Holds variables used by both
+
+
+*Note!* - The vagrant-hostmanager plugin is required when creating servers with dynamic networking (dhcp), as it maps the name/ip to the /etc/hosts file of the host, used later for ansible provisioner with the inventory.
