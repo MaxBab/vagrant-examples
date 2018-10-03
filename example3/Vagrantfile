@@ -8,7 +8,7 @@ box                         = "centos/7"
 # Define servers details.
 # Mandatory variables:
 # - hostname
-# - ip
+# - ip (possible arguments - static ip or dhcp - "10.10.10.10"/"dhcp")
 # Optional variables, could be set to override the defaults for specific box:
 # - ram (default: 512)
 # - cpu (default: 1)
@@ -16,10 +16,11 @@ box                         = "centos/7"
 servers = [
   { :hostname => "server1", :ip => "10.10.10.10", :ram => 1024, :cpu => 2, :group => "servers" },
   { :hostname => "client1", :ip => "10.10.10.11", :box => "ubuntu/xenial64", :group => "clients" },
-  { :hostname => "client2", :ip => "10.10.10.12", :group => "clients" }
+  { :hostname => "client2", :ip => "10.10.10.12", :group => "clients" },
+  { :hostname => "client3", :ip => "dhcp", :group => "clients" }
 ]
 
-# Ansible playbook to provision
+# Defined ansible playbook
 # If empty, will skip the ansible provisioner block
 ansible_playbook = "playbook.yml"
 # Ansible inventory. The path supports nested directories or a single file
@@ -34,6 +35,24 @@ Vagrant.configure(2) do |config|
     config.hostmanager.manage_guest = true
     config.hostmanager.ignore_private_ip = false
     config.hostmanager.include_offline = false
+
+    # Resolve dynamic ip address (dhcp) of the host and guests for the /etc/hosts file.
+    # https://github.com/devopsgroup-io/vagrant-hostmanager/issues/86
+    servers.each do |server|
+      if server[:ip] == "dhcp"
+        cached_addresses = {}
+        config.hostmanager.ip_resolver = proc do |vm, resolving_vm|
+          if cached_addresses[vm.name].nil?
+            if hostname = (vm.ssh_info && vm.ssh_info[:host])
+              vm.communicate.execute("hostname -I | cut -d ' ' -f 2") do |type, contents|
+                cached_addresses[vm.name] = contents.split("\n").first[/(\d+\.\d+\.\d+\.\d+)/, 1]
+              end
+            end
+          end
+          cached_addresses[vm.name]
+        end
+      end
+    end
   end
 
   # Create inventory for ansible provision
@@ -43,9 +62,15 @@ Vagrant.configure(2) do |config|
   end
   File.open(ansible_inventory_path, 'w') do |f|
     servers.each do |cfg|
-      # Breaking a long line
-      f.write "#{cfg[:hostname]} ansible_host=#{cfg[:ip]} "
-      f.write "ansible_user=#{ansible_user} ansible_ssh_private_key_file=#{ssh_key}\n"
+      if cfg[:ip] != "dhcp"
+        # Breaking a long line
+        f.write "#{cfg[:hostname]} ansible_host=#{cfg[:ip]} "
+        f.write "ansible_user=#{ansible_user} ansible_ssh_private_key_file=#{ssh_key}\n"
+      else
+        # When using the dhcp allocation for the vm, vagrant-hostmanager plugin is used
+        # to provide the resolving of the vm hostname.
+        f.write "#{cfg[:hostname]} ansible_user=#{ansible_user} ansible_ssh_private_key_file=#{ssh_key}\n"
+      end
     end
     f.write "\n"
     f.write "[all]\n"
@@ -60,7 +85,7 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  # Loop each server from the servers array above.
+  # Loop and create each server from the servers array above.
   servers.each_with_index do |server, index|
     # Check if custom box is defined for specific server within the servers array.
     # If not applies the default (box=ubuntu/xenial64).
@@ -68,7 +93,16 @@ Vagrant.configure(2) do |config|
     config.vm.define server[:hostname] do |conf|
       conf.vm.box = box_image.to_s
       conf.vm.hostname = server[:hostname]
-      conf.vm.network "private_network", ip: server[:ip]
+
+      # Set network options (static/dhcp) according to the provided by the user.
+      net_config = {}
+      if server[:ip] != "dhcp"
+        net_config[:ip] = server[:ip]
+        net_config[:netmask] = server[:netmask] || "255.255.255.0"
+      else
+        net_config[:type] = "dhcp"
+      end
+      conf.vm.network "private_network", net_config
 
       # Checks for the custom cpu and/or ram defined for a specific server.
       # If not applies the default (cpu=1, ram=512).
@@ -85,7 +119,7 @@ Vagrant.configure(2) do |config|
       config.vm.provision "file", source: ssh_key + ".pub", destination: "~/.ssh/authorized_keys"
 
       # The ubuntu/xenial64 box is missing python. Install it for ansible provision.
-      if box == "ubuntu/xenial64"
+      if box_image == "ubuntu/xenial64"
         config.vm.provision "shell" do |s|
           s.inline = "test -e /usr/bin/python || (apt-get -qqy update && apt-get install -qqy python-minimal)"
         end

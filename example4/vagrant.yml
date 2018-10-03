@@ -3,7 +3,7 @@
 # Define servers details.
 # Mandatory variables:
 # - hostname
-# - ip
+# - ip (possible arguments - static ip or dhcp - "10.10.10.10"/"dhcp")
 # Optional variables, could be set to override the defaults for specific box:
 # - ram (default: 512)
 # - cpu (default: 1)
@@ -20,6 +20,9 @@ servers:
     group: clients
   - hostname: client2
     ip: 10.10.10.12
+    group: clients
+  - hostname: client3
+    ip: dhcp
     group: clients
 
 # Global variables - ssh key and a box that should be used for the servers

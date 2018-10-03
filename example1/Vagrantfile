@@ -8,7 +8,7 @@ box                         = "centos/7"
 # Define servers details.
 # Mandatory variables:
 # - hostname
-# - ip
+# - ip (possible arguments - static ip or dhcp - "10.10.10.10"/"dhcp")
 # Optional variables, could be set to override the defaults for specific box:
 # - ram (default: 512)
 # - cpu (default: 1)
@@ -16,7 +16,8 @@ box                         = "centos/7"
 servers = [
   { :hostname => "server1", :ip => "10.10.10.10", :ram => 1024, :cpu => 2 },
   { :hostname => "client1", :ip => "10.10.10.11", :box => "ubuntu/xenial64" },
-  { :hostname => "client2", :ip => "10.10.10.12" }
+  { :hostname => "client2", :ip => "10.10.10.12" },
+  { :hostname => "client3", :ip => "dhcp" }
 ]
 
 Vagrant.configure(2) do |config|
@@ -27,9 +28,27 @@ Vagrant.configure(2) do |config|
     config.hostmanager.manage_guest = true
     config.hostmanager.ignore_private_ip = false
     config.hostmanager.include_offline = false
+
+    # Resolve dynamic ip address (dhcp) of the host and guests for the /etc/hosts file.
+    # https://github.com/devopsgroup-io/vagrant-hostmanager/issues/86
+    servers.each do |server|
+      if server[:ip] == "dhcp"
+        cached_addresses = {}
+        config.hostmanager.ip_resolver = proc do |vm, resolving_vm|
+          if cached_addresses[vm.name].nil?
+            if hostname = (vm.ssh_info && vm.ssh_info[:host])
+              vm.communicate.execute("hostname -I | cut -d ' ' -f 2") do |type, contents|
+                cached_addresses[vm.name] = contents.split("\n").first[/(\d+\.\d+\.\d+\.\d+)/, 1]
+              end
+            end
+          end
+          cached_addresses[vm.name]
+        end
+      end
+    end
   end
 
-  # Loop each server from the servers array above.
+  # Loop and create each server from the servers array above.
   servers.each do |server|
     # Check if custom box is defined for specific server within the servers array.
     # If not applies the default (box=ubuntu/xenial64).
@@ -37,7 +56,16 @@ Vagrant.configure(2) do |config|
     config.vm.define server[:hostname] do |conf|
       conf.vm.box = box_image.to_s
       conf.vm.hostname = server[:hostname]
-      conf.vm.network "private_network", ip: server[:ip]
+
+      # Set network options (static/dhcp) according to the provided by the user.
+      net_config = {}
+      if server[:ip] != "dhcp"
+        net_config[:ip] = server[:ip]
+        net_config[:netmask] = server[:netmask] || "255.255.255.0"
+      else
+        net_config[:type] = "dhcp"
+      end
+      conf.vm.network "private_network", net_config
 
       # Checks for the custom cpu and/or ram defined for a specific server.
       # If not applies the default (cpu=1, ram=512).
