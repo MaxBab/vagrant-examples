@@ -100,6 +100,16 @@ Vagrant.configure(2) do |config|
       end
       conf.vm.network "private_network", net_config
 
+      # Set port forwarding if defined
+      if !server[:port_guest].nil? && !server[:port_host].nil?
+        conf.vm.network "forwarded_port", guest: server[:port_guest], host: server[:port_host]
+      end
+
+      # Set synced folders if defined
+      if !server[:folder_guest].nil? && !server[:folder_host].nil?
+        conf.vm.synced_folder server[:folder_host], server[:folder_guest]
+      end
+
       # Checks for the custom cpu and/or ram defined for a specific server.
       # If not applies the default (cpu=1, ram=512).
       cpu = server["cpu"] ? server["cpu"] : 1;
