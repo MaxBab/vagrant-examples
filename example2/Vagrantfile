@@ -17,9 +17,9 @@ box                         = "centos/7"
 # - folder_guest and folder_host (synced folders - not defined by default)
 servers = [
   { :hostname => "server1", :ip => "10.10.10.10", :ram => 1024, :cpu => 2, :group => "servers" },
-  { :hostname => "client1", :ip => "10.10.10.11", :box => "ubuntu/xenial64", :group => "clients" },
+  { :hostname => "client1", :ip => "10.10.10.11", :box => "ubuntu/xenial64", :group => "clients", :folder_guest => "/srv/website", :folder_host => "src/" },
   { :hostname => "client2", :ip => "10.10.10.12", :group => "clients", :port_guest => 80, :port_host => 8080 },
-  { :hostname => "client3", :ip => "dhcp", :group => "clients", :folder_guest => "/srv/website", :folder_host => "src/" }
+  { :hostname => "client3", :ip => "dhcp", :group => "clients" }
 ]
 
 # Defined ansible playbook

@@ -20,16 +20,16 @@ servers:
     ip: 10.10.10.11
     box: "ubuntu/xenial64"
     group: clients
+    folder_guest: "/srv/website"
+    folder_host: "src/"
   - hostname: client2
-    ip: 10.10.10.12
+    ip: dhcp
     group: clients
     port_guest: 80
     port_host: 8080
   - hostname: client3
     ip: dhcp
     group: clients
-    folder_guest: "/srv/website"
-    folder_host: "src/"
 
 # Global variables - ssh key and a box that should be used for the servers
 box: "centos/7"
